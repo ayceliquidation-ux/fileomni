@@ -9,8 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "FileOmni | Local-First Utility Suite",
-  description: "A privacy-obsessed, high-performance web utility suite where all processing happens in the browser.",
+  title: "FileOmni | Privacy-First Utility Suite",
+  description: "A free, local-first web utility suite featuring AI background removal, image format converters, and smart document scanning. Fast, secure, and your files never leave your device.",
+  keywords: ["image converter", "heic to jpg", "ai background remover", "local file tools", "FileOmni"],
 };
 
 export default function RootLayout({

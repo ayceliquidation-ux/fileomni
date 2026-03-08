@@ -4,8 +4,6 @@ import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, MonitorUp, Loader2, Download, Image as ImageIcon } from 'lucide-react';
 import { ToolInstructions } from '@/components/ToolInstructions';
-import heic2any from 'heic2any';
-
 export default function HeicToJpgPage() {
   const [file, setFile] = useState<File | null>(null);
   const [convertedUrl, setConvertedUrl] = useState<string | null>(null);
@@ -38,6 +36,9 @@ export default function HeicToJpgPage() {
     setIsConverting(true);
     
     try {
+      // Dynamically import heic2any to prevent "window is not defined" SSR errors
+      const heic2any = (await import('heic2any')).default;
+      
       // heic2any returns either a single Blob or Blob[] depending on the file
       const result = await heic2any({
         blob: heicFile,

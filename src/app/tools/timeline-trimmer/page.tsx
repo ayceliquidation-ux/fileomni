@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Video Trim & Cut | UltraConvert',
+  title: 'Video Trim & Cut | FileOmni',
   description: 'Cut the start and end of any video instantly without quality loss. Zero upload delays.',
 };
 

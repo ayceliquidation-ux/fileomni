@@ -155,7 +155,7 @@ export default function VideoToGif() {
             </button>
             <a 
               href={gifUrl} 
-              download={`ultraconvert_${file?.name}.gif`}
+              download={`FileOmni_${file?.name}.gif`}
               className="flex-1 py-3 bg-primary text-primary-foreground font-medium rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all flex justify-center items-center gap-2 cursor-pointer"
             >
               <Download className="w-4 h-4" /> Save GIF

@@ -5,7 +5,7 @@ import BackgroundRemover from '@/components/BackgroundRemover';
 import { ToolInstructions } from '@/components/ToolInstructions';
 
 export const metadata: Metadata = {
-  title: 'AI Background Remover | UltraConvert',
+  title: 'AI Background Remover | FileOmni',
   description: 'Remove subjects from images locally using Transformers.js AI engine. Runs entirely in your browser.',
 };
 

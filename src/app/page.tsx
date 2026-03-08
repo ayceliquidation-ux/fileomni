@@ -16,7 +16,7 @@ export default function Home() {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center transform hover:rotate-12 transition-transform shadow-lg shadow-indigo-500/20">
             <Zap className="w-6 h-6 text-white fill-white" />
           </div>
-          <span className="text-xl font-bold tracking-tight">UltraConvert</span>
+          <span className="text-xl font-bold tracking-tight">FileOmni</span>
         </div>
         
         <nav className="hidden md:block">
@@ -42,9 +42,9 @@ export default function Home() {
         <div className="hidden md:flex relative group inline-block z-[999]">
           <button className="text-gray-300 hover:text-white py-2 text-2xl leading-none">☰</button>
           <div className="absolute right-0 mt-2 w-72 bg-gray-900 border border-gray-700 rounded-md shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 p-5 text-left cursor-default">
-            <h4 className="text-white font-medium mb-2 text-sm">About UltraConvert</h4>
+            <h4 className="text-white font-medium mb-2 text-sm">About FileOmni</h4>
             <p className="text-xs text-gray-400 leading-relaxed">
-              UltraConvert is a privacy-first utility suite. All media processing, AI background removal, and document conversions run entirely locally on your machine via WebAssembly. 
+              FileOmni is a privacy-first utility suite. All media processing, AI background removal, and document conversions run entirely locally on your machine via WebAssembly. 
               <br/><br/>
               Zero files or personal data are ever uploaded, analyzed, or stored on external servers.
             </p>
@@ -106,7 +106,7 @@ export default function Home() {
       </main>
 
       <footer className="mt-24 text-center text-sm text-gray-600">
-        © 2026 UltraConvert Local-First Utilities. Built for the privacy-conscious web.
+        © 2026 FileOmni Local-First Utilities. Built for the privacy-conscious web.
       </footer>
     </div>
   );

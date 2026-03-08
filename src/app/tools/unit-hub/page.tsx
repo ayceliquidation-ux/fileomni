@@ -5,7 +5,7 @@ import UnitHub from '@/components/UnitHub';
 import { ToolInstructions } from '@/components/ToolInstructions';
 
 export const metadata: Metadata = {
-  title: 'Unit Converter Hub | UltraConvert',
+  title: 'Unit Converter Hub | FileOmni',
   description: 'Instantly convert length, weight, temperature, and volume units completely locally.',
 };
 

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Extract Audio from Video | UltraConvert',
+  title: 'Extract Audio from Video | FileOmni',
   description: 'Convert MP4 to ultra-high-quality 320kbps MP3 right in your browser. All processing is local and secure.',
 };
 

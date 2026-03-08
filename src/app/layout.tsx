@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "UltraConvert | Local-First Utility Suite",
+  title: "FileOmni | Local-First Utility Suite",
   description: "A privacy-obsessed, high-performance web utility suite where all processing happens in the browser.",
 };
 

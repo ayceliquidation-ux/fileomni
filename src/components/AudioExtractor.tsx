@@ -134,7 +134,7 @@ export default function AudioExtractor() {
             </button>
             <a 
               href={audioUrl} 
-              download={`ultraconvert_${file?.name}.mp3`}
+              download={`FileOmni_${file?.name}.mp3`}
               className="flex-1 py-3 bg-primary text-primary-foreground font-medium rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all flex justify-center items-center gap-2 cursor-pointer"
             >
               <Download className="w-4 h-4" /> Save MP3

@@ -5,7 +5,7 @@ import PdfToJpg from '@/components/PdfToJpg';
 import { ToolInstructions } from '@/components/ToolInstructions';
 
 export const metadata: Metadata = {
-  title: 'PDF to JPG Converter | UltraConvert',
+  title: 'PDF to JPG Converter | FileOmni',
   description: 'Instantly convert secure PDF multi-page documents to high-resolution offline JPG images.',
 };
 

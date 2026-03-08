@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Video to GIF Converter | UltraConvert',
+  title: 'Video to GIF Converter | FileOmni',
   description: 'Convert MP4 and MOV videos to extremely high-quality GIFs totally offline with our local-first WebAssembly engine.',
 };
 

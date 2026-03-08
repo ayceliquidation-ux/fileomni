@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ShieldCheck, CheckCircle2, Lock, Cpu, ServerOff } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | UltraConvert',
+  title: 'Privacy Policy | FileOmni',
   description: 'Learn about our 100% local-first, zero-data-collection privacy architecture.',
 };
 
@@ -17,7 +17,7 @@ export default function PrivacyPage() {
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
                     <ShieldCheck className="w-5 h-5 text-white" />
                 </div>
-                UltraConvert
+                FileOmni
             </Link>
             <nav className="flex gap-6 text-sm font-medium text-gray-400">
                 <Link href="/" className="hover:text-white transition-colors">Home</Link>
@@ -34,7 +34,7 @@ export default function PrivacyPage() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">stays on your device.</span>
             </h1>
             <p className="text-xl text-gray-400 leading-relaxed max-w-2xl">
-                Unlike traditional web tools, UltraConvert operates on a strict Local-First architecture. We do not have servers to process your files, which means your data can never be intercepted, stored, or sold.
+                Unlike traditional web tools, FileOmni operates on a strict Local-First architecture. We do not have servers to process your files, which means your data can never be intercepted, stored, or sold.
             </p>
         </div>
 
@@ -75,7 +75,7 @@ export default function PrivacyPage() {
                </div>
                <h3 className="text-lg font-bold">No Hidden Tracking</h3>
                <p className="text-gray-400 text-sm leading-relaxed">
-                  UltraConvert is a statically hosted application. We do not use invasive analytics, cookie tracking, or user fingerprinting. What you do here is your business alone.
+                  FileOmni is a statically hosted application. We do not use invasive analytics, cookie tracking, or user fingerprinting. What you do here is your business alone.
                </p>
             </div>
         </div>

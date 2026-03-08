@@ -5,7 +5,7 @@ import ImageToPdfConverter from '@/components/ImageToPdf';
 import { ToolInstructions } from '@/components/ToolInstructions';
 
 export const metadata: Metadata = {
-  title: 'Image to PDF Converter | UltraConvert',
+  title: 'Image to PDF Converter | FileOmni',
   description: 'Instantly convert and merge multiple JPG/PNG images into a single secure PDF document completely locally.',
 };
 

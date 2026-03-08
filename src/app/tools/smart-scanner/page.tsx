@@ -379,6 +379,16 @@ export default function SmartScannerPage() {
         <Link href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-white transition-colors mb-4">
           <ArrowLeft className="w-4 h-4" /> Back to Tools
         </Link>
+
+        {/* SEO Headers */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400 mb-4">
+            Free Online Document Scanner (Use Your Device Camera)
+          </h1>
+          <p className="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
+            Instantly scan documents, receipts, and notes using your laptop or phone camera. Completely free, no downloads, and processed 100% locally on your device for maximum privacy.
+          </p>
+        </div>
         
         <div className="bg-[#121214] border border-white/5 rounded-3xl p-4 md:p-6 mb-6 shadow-2xl">
           <div className="flex flex-col items-center">
@@ -506,6 +516,27 @@ export default function SmartScannerPage() {
                     <Camera className="w-5 h-5" />
                     Capture Document
                   </button>
+                )}
+
+                {/* How it Works Section for SEO/UX */}
+                {scanMode === 'camera' && (
+                  <div className="w-full mt-4 bg-black/30 border border-white/5 rounded-2xl p-6 text-left">
+                    <h2 className="text-xl font-bold mb-4 text-white">How it Works</h2>
+                    <ul className="text-gray-400 space-y-3">
+                      <li className="flex items-center gap-3">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-bold shrink-0">1</span>
+                        <span>Allow camera access.</span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-bold shrink-0">2</span>
+                        <span>Hold your document up to the screen.</span>
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-bold shrink-0">3</span>
+                        <span>Capture and save as a PDF or image.</span>
+                      </li>
+                    </ul>
+                  </div>
                 )}
               </div>
             )}

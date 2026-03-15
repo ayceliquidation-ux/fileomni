@@ -35,6 +35,14 @@ export const tools: ToolConfig[] = [
     icon: '🔄'
   },
   {
+    id: 'protect-pdf',
+    name: 'Protect PDF',
+    description: 'Secure your PDF files with a password.',
+    href: '/protect-pdf',
+    category: 'Documents',
+    icon: '🔒'
+  },
+  {
     id: 'add-page-numbers',
     name: 'Add Page Numbers',
     description: 'Insert sequential page numbers into PDFs.',

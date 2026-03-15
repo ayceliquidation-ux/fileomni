@@ -35,6 +35,14 @@ export const tools: ToolConfig[] = [
     icon: '🔄'
   },
   {
+    id: 'add-page-numbers',
+    name: 'Add Page Numbers',
+    description: 'Insert sequential page numbers into PDFs.',
+    href: '/add-page-numbers',
+    category: 'Documents',
+    icon: '🔢'
+  },
+  {
     id: 'remove-pages',
     name: 'Remove Pages',
     description: 'Visually delete pages from your PDF files.',

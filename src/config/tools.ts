@@ -161,5 +161,13 @@ export const tools: ToolConfig[] = [
     href: '/tools/redact-pdf',
     category: 'Documents',
     icon: '⬛'
+  },
+  {
+    id: 'compress-office',
+    name: 'Compress Office',
+    description: 'Locally reduce Word and PowerPoint file sizes through image optimization.',
+    href: '/tools/compress-office',
+    category: 'Documents',
+    icon: '📊'
   }
 ];

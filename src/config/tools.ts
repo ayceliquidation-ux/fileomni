@@ -35,6 +35,14 @@ export const tools: ToolConfig[] = [
     icon: '🔄'
   },
   {
+    id: 'add-watermark',
+    name: 'Add Watermark',
+    description: 'Stamp custom text onto your PDF pages.',
+    href: '/add-watermark',
+    category: 'Documents',
+    icon: '🔏'
+  },
+  {
     id: 'remove-background',
     name: 'AI Background Remover',
     description: 'Local AI subject isolation and background removal.',

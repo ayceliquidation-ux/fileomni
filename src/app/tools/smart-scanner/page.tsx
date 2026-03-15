@@ -239,12 +239,23 @@ export default function SmartScannerPage() {
     const cv = (window as any).cv;
     const video = videoRef.current;
 
-    // 2. Create a temporary, invisible canvas in browser memory
+    // 1. Calculate safe downscaled dimensions (Max 1920px)
+    const MAX_DIM = 1920;
+    let w = video.videoWidth;
+    let h = video.videoHeight;
+    
+    if (Math.max(w, h) > MAX_DIM) {
+      const scale = MAX_DIM / Math.max(w, h);
+      w = Math.floor(w * scale);
+      h = Math.floor(h * scale);
+    }
+
+    // 2. Draw to in-memory canvas at safe resolution
     const tmpCanvas = document.createElement('canvas');
-    tmpCanvas.width = video.videoWidth;
-    tmpCanvas.height = video.videoHeight;
+    tmpCanvas.width = w;
+    tmpCanvas.height = h;
     const ctx = tmpCanvas.getContext('2d');
-    if (ctx) ctx.drawImage(video, 0, 0, tmpCanvas.width, tmpCanvas.height);
+    if (ctx) ctx.drawImage(video, 0, 0, w, h);
 
     // 3. Feed the pristine frame directly into the OpenCV master reference
     if (originalMatRef.current) originalMatRef.current.delete();
@@ -254,13 +265,13 @@ export default function SmartScannerPage() {
     initialDisplaySize.current = { width: 0, height: 0 };
 
     // 5. Calculate default fallback corners based on the intrinsic video size
-    const padX = tmpCanvas.width * 0.1;
-    const padY = tmpCanvas.height * 0.1;
+    const padX = w * 0.1;
+    const padY = h * 0.1;
     setCorners([
       { x: padX, y: padY },
-      { x: tmpCanvas.width - padX, y: padY },
-      { x: tmpCanvas.width - padX, y: tmpCanvas.height - padY },
-      { x: padX, y: tmpCanvas.height - padY }
+      { x: w - padX, y: padY },
+      { x: w - padX, y: h - padY },
+      { x: padX, y: h - padY }
     ]);
 
     // Create a dummy file so UI proceeds to edit mode gracefully
@@ -751,8 +762,8 @@ export default function SmartScannerPage() {
              
              {isCameraMode ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-8 bg-[#0F0F11] z-30">
-                  <video ref={videoRef} autoPlay playsInline muted className="w-full max-h-[60vh] object-contain mb-6 rounded-xl border border-white/10 bg-black shadow-2xl" />
-                  <div className="flex gap-4 w-full max-w-sm">
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-[50vh] md:h-[70vh] object-contain bg-black rounded-lg" />
+                  <div className="flex flex-wrap justify-center gap-4 mt-4 w-full">
                      <button onClick={stopCamera} className="w-1/3 py-4 bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold rounded-xl transition-all border border-red-500/30">
                        Cancel
                      </button>
@@ -782,7 +793,7 @@ export default function SmartScannerPage() {
                    )}
 
                    {/* The container gives the canvas a bounding box to scale proportionally */}
-                   <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8 md:pt-16 bg-[#0F0F11]">
+                   <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8 md:pt-16 bg-[#0F0F11] touch-none">
                        {!file && !isCameraMode && (
                            <div className="flex flex-col items-center justify-center text-gray-600 opacity-60">
                                <div className="w-24 h-24 border border-dashed border-gray-600 rounded-lg mb-4"></div>

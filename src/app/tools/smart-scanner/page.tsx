@@ -33,6 +33,7 @@ export default function SmartScannerPage() {
   const initialDisplaySize = useRef({ width: 0, height: 0 });
 
   const [isCameraMode, setIsCameraMode] = useState(false);
+  const [currentFacingMode, setCurrentFacingMode] = useState<string>("environment");
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -211,6 +212,7 @@ export default function SmartScannerPage() {
   };
 
   const startCamera = async (facingMode = "user") => {
+    setCurrentFacingMode(facingMode);
     setIsCameraMode(true);
     if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
     
@@ -222,6 +224,11 @@ export default function SmartScannerPage() {
       console.error("Camera error:", err);
       alert("Could not access camera. Please check permissions.");
     }
+  };
+
+  const flipCamera = () => {
+    const newMode = currentFacingMode === "user" ? "environment" : "user";
+    startCamera(newMode);
   };
 
   const stopCamera = () => {
@@ -760,57 +767,58 @@ export default function SmartScannerPage() {
           {/* Right Column - 2/3 Canvas Display Container */}
           <div className="w-full lg:w-2/3 flex flex-col fade-in bg-[#121214] border border-white/5 rounded-2xl min-h-[500px] lg:min-h-[700px] overflow-hidden relative">
              
-             {isCameraMode ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-8 bg-[#0F0F11] z-30">
-                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-[50vh] md:h-[70vh] object-contain bg-black rounded-lg" />
-                  <div className="flex flex-wrap justify-center gap-4 mt-4 w-full">
-                     <button onClick={stopCamera} className="w-1/3 py-4 bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold rounded-xl transition-all border border-red-500/30">
-                       Cancel
-                     </button>
-                     <button onClick={capturePhoto} className="w-2/3 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-[0_0_30px_-5px_rgba(99,102,241,0.5)] transition-all border border-indigo-400/20 text-lg">
-                       📸 Snap Document
-                     </button>
+             {isCameraMode && (
+                <div className="fixed inset-0 z-50 bg-black flex flex-col">
+                  {/* Video takes up maximum available space above buttons */}
+                  <div className="flex-grow relative w-full overflow-hidden flex items-center justify-center">
+                     <video ref={videoRef} autoPlay playsInline muted className="absolute w-full h-full object-cover" />
+                  </div>
+                  {/* Fixed bottom bar for buttons */}
+                  <div className="w-full bg-black/90 pb-safe pt-4 px-4 flex flex-col gap-3 pb-8">
+                     <div className="flex justify-center gap-4">
+                       <button onClick={capturePhoto} className="flex-1 bg-blue-600 text-white py-4 rounded-xl text-lg font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-transform">📸 Snap</button>
+                       <button onClick={flipCamera} className="flex-1 bg-gray-700 text-white py-4 rounded-xl text-lg font-bold active:scale-95 transition-transform">🔄 Flip</button>
+                     </div>
+                     <button onClick={stopCamera} className="w-full bg-red-900/50 text-red-200 py-3 rounded-xl active:scale-95 transition-transform">Cancel</button>
                   </div>
                 </div>
-             ) : (
-                <>
-                   {/* Dynamic Filter Toggle Overlay */}
-                   {isFlattened && (
-                      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex p-1 bg-[#1A1A1D] border border-white/10 rounded-lg shadow-xl backdrop-blur-md">
-                         <button 
-                           onClick={() => setFilterMode('color')}
-                           className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterMode === 'color' ? 'bg-[#2A2A2E] text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                         >
-                           Original Color
-                         </button>
-                         <button 
-                           onClick={() => setFilterMode('bw')}
-                           className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterMode === 'bw' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                         >
-                           B&W Scan
-                         </button>
-                      </div>
-                   )}
-
-                   {/* The container gives the canvas a bounding box to scale proportionally */}
-                   <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8 md:pt-16 bg-[#0F0F11] touch-none">
-                       {!file && !isCameraMode && (
-                           <div className="flex flex-col items-center justify-center text-gray-600 opacity-60">
-                               <div className="w-24 h-24 border border-dashed border-gray-600 rounded-lg mb-4"></div>
-                               <p className="font-medium tracking-wide text-sm">Waiting for document...</p>
-                           </div>
-                       )}
-                       <canvas 
-                          ref={canvasRef} 
-                          className={`shadow-2xl ring-1 ring-white/10 transition-opacity duration-300 touch-none ${!file ? 'opacity-0' : 'opacity-100'} ${corners && !isFlattened ? 'cursor-crosshair' : ''}`}
-                          onPointerDown={onPointerDown}
-                          onPointerMove={onPointerMove}
-                          onPointerUp={onPointerUp}
-                          onPointerCancel={onPointerUp}
-                       />
-                   </div>
-                </>
              )}
+
+             {/* Dynamic Filter Toggle Overlay */}
+             {isFlattened && !isCameraMode && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex p-1 bg-[#1A1A1D] border border-white/10 rounded-lg shadow-xl backdrop-blur-md">
+                   <button 
+                     onClick={() => setFilterMode('color')}
+                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterMode === 'color' ? 'bg-[#2A2A2E] text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                   >
+                     Original Color
+                   </button>
+                   <button 
+                     onClick={() => setFilterMode('bw')}
+                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterMode === 'bw' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                   >
+                     B&W Scan
+                   </button>
+                </div>
+             )}
+
+             {/* The container gives the canvas a bounding box to scale proportionally */}
+             <div className={`absolute inset-0 flex items-center justify-center p-4 md:p-8 md:pt-16 bg-[#0F0F11] touch-none ${isCameraMode ? 'hidden' : ''}`}>
+                 {!file && !isCameraMode && (
+                     <div className="flex flex-col items-center justify-center text-gray-600 opacity-60">
+                         <div className="w-24 h-24 border border-dashed border-gray-600 rounded-lg mb-4"></div>
+                         <p className="font-medium tracking-wide text-sm">Waiting for document...</p>
+                     </div>
+                 )}
+                 <canvas 
+                    ref={canvasRef} 
+                    className={`shadow-2xl ring-1 ring-white/10 transition-opacity duration-300 touch-none ${!file || isCameraMode ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${corners && !isFlattened ? 'cursor-crosshair' : ''}`}
+                    onPointerDown={onPointerDown}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    onPointerCancel={onPointerUp}
+                 />
+             </div>
           </div>
         </div>
       </main>

@@ -19,6 +19,14 @@ export const tools: ToolConfig[] = [
     icon: '📑'
   },
   {
+    id: 'split-pdf',
+    name: 'Split PDF',
+    description: 'Extract specific pages from a PDF document.',
+    href: '/split-pdf',
+    category: 'Documents',
+    icon: '✂️'
+  },
+  {
     id: 'remove-background',
     name: 'AI Background Remover',
     description: 'Local AI subject isolation and background removal.',

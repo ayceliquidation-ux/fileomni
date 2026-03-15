@@ -1,670 +1,808 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import Script from 'next/script';
-import { ArrowLeft, Camera, Download, RotateCcw, AlertCircle, Upload, Image as ImageIcon, Sparkles, FileText, X } from 'lucide-react';
-import { ToolInstructions } from '@/components/ToolInstructions';
+import { useState, useCallback, useEffect, useRef } from "react";
+import { 
+  UploadCloud, 
+  FileText, 
+  AlertCircle,
+  ArrowLeft,
+  X,
+  Sparkles,
+  Layers,
+  Download
+} from "lucide-react";
+import Link from "next/link";
 import { PDFDocument } from 'pdf-lib';
 
-type ScanMode = 'camera' | 'upload';
-
 export default function SmartScannerPage() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const guideBoxRef = useRef<HTMLDivElement>(null);
-  
-  const [scanMode, setScanMode] = useState<ScanMode>('camera');
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [rawCroppedImage, setRawCroppedImage] = useState<string | null>(null);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [originalImage, setOriginalImage] = useState<string | null>(null);
-  const [imageDimensions, setImageDimensions] = useState<{width: number, height: number} | null>(null);
-  const [step, setStep] = useState<'camera' | 'result'>('camera');
-  const [filterMode, setFilterMode] = useState<'color' | 'bw'>('color');
-  const [scannedPages, setScannedPages] = useState<string[]>([]);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-  
-  const [error, setError] = useState<string | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [isOpenCvLoaded, setIsOpenCvLoaded] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [isCvLoaded, setIsCvLoaded] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Interactive Scanning State
+  const [corners, setCorners] = useState<{x: number, y: number}[] | null>(null);
+  const [draggingCornerIndex, setDraggingCornerIndex] = useState<number | null>(null);
+  const [isFlattened, setIsFlattened] = useState(false);
+  const [filterMode, setFilterMode] = useState<'color' | 'bw'>('color');
+  
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const originalMatRef = useRef<any>(null);
+  const initialDisplaySize = useRef({ width: 0, height: 0 });
 
-  const startCamera = useCallback(async () => {
-    setError(null);
-    setCapturedImage(null);
-    setIsCameraActive(true);
-    try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: true
-      });
-      
-      streamRef.current = mediaStream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-    } catch (err: any) {
-      console.error('Error accessing camera:', err);
-      setError(`Camera Error: ${err.message || 'Could not access the camera. Please ensure you have granted permission and a camera is available.'}`);
-      setIsCameraActive(false);
-    }
-  }, []);
+  const [isCameraMode, setIsCameraMode] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setIsCameraActive(false);
-  }, []);
-
-  // Clean up on unmount removed to survive React 18 Strict Mode double-firing
+  // Inject OpenCV.js WebAssembly Engine
   useEffect(() => {
-    return () => {
-      // Intentionally empty. We only manually clean up on Capture or Mode Switch.
-    };
-  }, []);
-
-  // Switch mode handling
-  const handleModeSwitch = (mode: ScanMode) => {
-    if (mode === 'upload') {
-      stopCamera();
-    }
-    setScanMode(mode);
-    setCapturedImage(null);
-    setRawCroppedImage(null);
-    setOriginalImage(null);
-    setImageDimensions(null);
-    setStep('camera');
-    setFilterMode('color');
-    setError(null);
-  };
-
-  const captureDocument = () => {
-    if (!videoRef.current || !canvasRef.current || !guideBoxRef.current) return;
-    
-    const video = videoRef.current;
-    if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
-    
-    const canvas = canvasRef.current;
-    const guideBox = guideBoxRef.current;
-    
-    const videoRect = video.getBoundingClientRect();
-    const guideRect = guideBox.getBoundingClientRect();
-
-    const videoRatio = video.videoWidth / video.videoHeight;
-    const elementRatio = videoRect.width / videoRect.height;
-    
-    let renderedWidth = videoRect.width;
-    let renderedHeight = videoRect.height;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    if (videoRatio > elementRatio) {
-      renderedHeight = videoRect.width / videoRatio;
-      offsetY = (videoRect.height - renderedHeight) / 2;
-    } else {
-      renderedWidth = videoRect.height * videoRatio;
-      offsetX = (videoRect.width - renderedWidth) / 2;
-    }
-
-    const scale = video.videoWidth / renderedWidth;
-
-    const cropX = (guideRect.left - (videoRect.left + offsetX)) * scale;
-    const cropY = (guideRect.top - (videoRect.top + offsetY)) * scale;
-    const cropWidth = guideRect.width * scale;
-    const cropHeight = guideRect.height * scale;
-    
-    canvas.width = cropWidth;
-    canvas.height = cropHeight;
-    
-    const context = canvas.getContext('2d');
-    if (context) {
-      context.drawImage(
-        video,
-        Math.max(0, cropX),
-        Math.max(0, cropY),
-        Math.min(video.videoWidth, cropWidth),
-        Math.min(video.videoHeight, cropHeight),
-        0, 0,
-        Math.min(video.videoWidth, cropWidth),
-        Math.min(video.videoHeight, cropHeight)
-      );
-      
-      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-      setOriginalImage(imageDataUrl);
-      setRawCroppedImage(imageDataUrl);
-      setCapturedImage(imageDataUrl);
-      setFilterMode('color');
-      
-      stopCamera();
-      setStep('result');
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload a valid image file.');
+    if (document.getElementById("opencv-cdn")) {
+      if ((window as any).cv) setIsCvLoaded(true);
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        // Draw the image onto the hidden canvas to standardize format
-        const img = new Image();
-        img.onload = () => {
-          if (canvasRef.current) {
-             const canvas = canvasRef.current;
-             canvas.width = img.width;
-             canvas.height = img.height;
-             const ctx = canvas.getContext('2d');
-             if (ctx) {
-               ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-               const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-               setImageDimensions({ width: img.width, height: img.height });
-               setOriginalImage(imageDataUrl);
-               setRawCroppedImage(imageDataUrl);
-               setCapturedImage(imageDataUrl);
-               setFilterMode('color');
-               setStep('result');
-             }
-          }
-        };
-        img.src = event.target.result.toString();
+    const script = document.createElement("script");
+    script.id = "opencv-cdn";
+    script.src = "https://docs.opencv.org/4.8.0/opencv.js";
+    script.async = true;
+    
+    script.onload = () => {
+      const cv = (window as any).cv;
+      
+      // Sometimes OpenCV takes a moment to fully initialize its WASM backend
+      if (cv && cv.getBuildInformation) {
+         setIsCvLoaded(true);
+      } else if (cv) {
+         cv.onRuntimeInitialized = () => {
+            setIsCvLoaded(true);
+         };
       }
     };
-    reader.onerror = () => {
-      setError('Failed to read the file.');
+    script.onerror = () => {
+      console.error("Failed to load OpenCV.js from CDN");
+      setError("Failed to initialize the Computer Vision Engine. Please check your internet connection.");
     };
-    reader.readAsDataURL(file);
-    setError(null);
-  };
-
-  const triggerFileUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const downloadImage = () => {
-    if (!capturedImage) return;
     
-    const a = document.createElement('a');
-    a.href = capturedImage;
-    a.download = `smart-scan-${Date.now()}.jpg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    document.body.appendChild(script);
+  }, []);
+
+  // Master Draw Loop: Handles Background Image + Interactive Corner Handles
+  const drawCanvas = useCallback(() => {
+    if (!canvasRef.current || !imageSrc || isFlattened) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      // Scale bounds 
+      const containerWidth = canvas.parentElement?.clientWidth || 800;
+      const containerHeight = canvas.parentElement?.clientHeight || 600;
+      const scale = Math.min(containerWidth / img.width, containerHeight / img.height);
+      const scaledWidth = img.width * scale;
+      const scaledHeight = img.height * scale;
+
+      canvas.width = scaledWidth;
+      canvas.height = scaledHeight;
+
+      // 1. Draw Original Photograph
+      ctx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
+
+      const cv = (window as any).cv;
+      if (cv && canvasRef.current) {
+        if (!originalMatRef.current || originalMatRef.current.cols !== scaledWidth || originalMatRef.current.rows !== scaledHeight) {
+           if (originalMatRef.current) originalMatRef.current.delete();
+           originalMatRef.current = cv.imread(canvasRef.current);
+        }
+      }
+
+      // 2. Draw Interactive Bounding Polygon (Neon Green)
+      if (corners && corners.length === 4) {
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        ctx.lineTo(corners[1].x, corners[1].y);
+        ctx.lineTo(corners[2].x, corners[2].y);
+        ctx.lineTo(corners[3].x, corners[3].y);
+        ctx.closePath();
+        
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(16, 185, 129, 1)"; // Emerald-500
+        ctx.stroke();
+        
+        ctx.fillStyle = "rgba(16, 185, 129, 0.1)"; // Light Green overlay
+        ctx.fill();
+
+        // 3. Draw Physical Grab Handles
+        corners.forEach((corner, i) => {
+          ctx.beginPath();
+          ctx.arc(corner.x, corner.y, 8, 0, 2 * Math.PI);
+          
+          // Hover/Active drag states
+          if (draggingCornerIndex === i) {
+            ctx.fillStyle = "rgba(16, 185, 129, 1)"; 
+            ctx.strokeStyle = "#FFFFFF";
+            ctx.lineWidth = 3;
+          } else {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "rgba(16, 185, 129, 1)";
+            ctx.lineWidth = 2;
+          }
+          
+          ctx.fill();
+          ctx.stroke();
+        });
+      }
+    };
+    img.src = imageSrc;
+  }, [imageSrc, corners, draggingCornerIndex, isFlattened]);
+
+  useEffect(() => {
+    if (imageSrc) drawCanvas();
+  }, [imageSrc, corners, draggingCornerIndex, isFlattened, drawCanvas]);
+
+  const processFile = (newFile: File) => {
+    setError(null);
+    if (!newFile.type.startsWith('image/')) {
+      setError("Please upload a valid image file (JPG, PNG).");
+      return;
+    }
+    
+    setFile(newFile);
+    
+    // Convert to ObjectURL for drawing to canvas
+    const url = URL.createObjectURL(newFile);
+    setImageSrc(url);
+    
+    if (originalMatRef.current) {
+      originalMatRef.current.delete();
+      originalMatRef.current = null;
+    }
+
+    initialDisplaySize.current = { width: 0, height: 0 };
+    setCorners(null); // Reset corners on new upload
+    setIsFlattened(false);
   };
 
-  const downloadPdf = async () => {
-    if (!capturedImage) return;
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  }, []);
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFile(e.target.files[0]);
+    }
+    e.target.value = '';
+  };
+
+  const removeFile = () => {
+    if (imageSrc) URL.revokeObjectURL(imageSrc);
+    setFile(null);
+    setImageSrc(null);
+    if (originalMatRef.current) {
+      originalMatRef.current.delete();
+      originalMatRef.current = null;
+    }
+    initialDisplaySize.current = { width: 0, height: 0 };
+    setError(null);
+    setIsFlattened(false);
+    
+    // Clear canvas
+    if (canvasRef.current) {
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  };
+
+  const startCamera = async (facingMode = "user") => {
+    setIsCameraMode(true);
+    if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch (err) {
+      console.error("Camera error:", err);
+      alert("Could not access camera. Please check permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+    setIsCameraMode(false);
+  };
+
+  const capturePhoto = () => {
+    // 1. Remove canvasRef from the safety check since it might be unmounted
+    if (!videoRef.current || !(window as any).cv) {
+      console.error("Camera or OpenCV not ready.");
+      return;
+    }
+    
+    const cv = (window as any).cv;
+    const video = videoRef.current;
+
+    // 2. Create a temporary, invisible canvas in browser memory
+    const tmpCanvas = document.createElement('canvas');
+    tmpCanvas.width = video.videoWidth;
+    tmpCanvas.height = video.videoHeight;
+    const ctx = tmpCanvas.getContext('2d');
+    if (ctx) ctx.drawImage(video, 0, 0, tmpCanvas.width, tmpCanvas.height);
+
+    // 3. Feed the pristine frame directly into the OpenCV master reference
+    if (originalMatRef.current) originalMatRef.current.delete();
+    originalMatRef.current = cv.imread(tmpCanvas);
+
+    // 4. Flush the CSS scale lock so the new image calculates its own size
+    initialDisplaySize.current = { width: 0, height: 0 };
+
+    // 5. Calculate default fallback corners based on the intrinsic video size
+    const padX = tmpCanvas.width * 0.1;
+    const padY = tmpCanvas.height * 0.1;
+    setCorners([
+      { x: padX, y: padY },
+      { x: tmpCanvas.width - padX, y: padY },
+      { x: tmpCanvas.width - padX, y: tmpCanvas.height - padY },
+      { x: padX, y: tmpCanvas.height - padY }
+    ]);
+
+    // Create a dummy file so UI proceeds to edit mode gracefully
+    tmpCanvas.toBlob((blob) => {
+      if (blob) {
+         const file = new File([blob], "Webcam_Capture.jpg", { type: "image/jpeg" });
+         setFile(file);
+         setImageSrc(URL.createObjectURL(file));
+      }
+    }, 'image/jpeg', 0.95);
+
+    // 6. Turn off the webcam, which will cause React to remount the main <canvas>
+    stopCamera();
+
+    // 7. Wait 100ms for React to finish putting the <canvas> back on the screen, then render!
+    setTimeout(() => {
+      if (typeof flattenDocument === 'function') {
+        flattenDocument();
+      }
+    }, 100);
+  };
+
+  // Pointer Tracking Logic for Canvas Interaction
+  const getPointerPos = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    
+    // 1. Get true screen location of the canvas
+    const rect = canvas.getBoundingClientRect();
+    
+    // 2. Calculate scaling factor (Intrinsic / CSS)
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    // 3. Map exact CSS click to Intrinsic canvas pixel
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!corners || isFlattened) return;
+    const { x, y } = getPointerPos(e);
+    
+    // Check Euclidean distance to see if we grabbed a specific handle
+    for (let i = 0; i < corners.length; i++) {
+      const distance = Math.hypot(corners[i].x - x, corners[i].y - y);
+      if (distance < 15) { // 15px interaction radius
+        setDraggingCornerIndex(i);
+        // Lock pointer to canvas natively to prevent mouse-off sliding
+        (e.target as Element).setPointerCapture(e.pointerId);
+        break;
+      }
+    }
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (draggingCornerIndex === null || !corners || !canvasRef.current || isFlattened) return;
+    
+    const { x, y } = getPointerPos(e);
+    // Boundary clamp so handles don't leave the canvas mathematically
+    const clampedX = Math.max(0, Math.min(x, canvasRef.current.width));
+    const clampedY = Math.max(0, Math.min(y, canvasRef.current.height));
+
+    const newCorners = [...corners];
+    newCorners[draggingCornerIndex] = { x: clampedX, y: clampedY };
+    setCorners(newCorners);
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isFlattened) return;
+    setDraggingCornerIndex(null);
+    (e.target as Element).releasePointerCapture(e.pointerId);
+  };
+
+  // Redraw canvas on window resize to maintain responsiveness
+  useEffect(() => {
+    const handleResize = () => {
+        if (imageSrc) drawCanvas();
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [imageSrc, drawCanvas]);
+
+  const autoDetectDocument = () => {
+    if (!canvasRef.current || !isCvLoaded || !imageSrc) return;
+    setIsProcessing(true);
+    setError(null);
+    
+    // Slight timeout allows React to render the loading state
+    setTimeout(() => {
+      let src: any, dst: any, gray: any, blurred: any, edges: any, contours: any, hierarchy: any;
+      try {
+        const cv = (window as any).cv;
+        const canvas = canvasRef.current;
+        if (!canvas) throw new Error("Canvas missing");
+
+        // 1. Read Image Data into Mat
+        src = cv.imread(canvas);
+        dst = src.clone(); // Clone for drawing overlays
+        
+        // Output matricies
+        gray = new cv.Mat();
+        blurred = new cv.Mat();
+        edges = new cv.Mat();
+
+        // 2. Grayscale
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+
+        // 3. Gaussian Blur (smooth out noise)
+        cv.GaussianBlur(gray, blurred, new cv.Size(7, 7), 0, 0, cv.BORDER_DEFAULT);
+
+        // 4. Canny Edge Detection
+        cv.Canny(blurred, edges, 75, 200, 3, false);
+
+        // 5. Find Contours
+        contours = new cv.MatVector();
+        hierarchy = new cv.Mat();
+        cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+        let maxArea = 0;
+        let maxContourIndex = -1;
+        let bestApprox: any = null;
+
+        // Iterate through all contours to find the largest 4-point polygon
+        for (let i = 0; i < contours.size(); ++i) {
+          const contour = contours.get(i);
+          const area = cv.contourArea(contour);
+
+          // Ignore tiny specs of noise
+          if (area > 5000) {
+            const perimeter = cv.arcLength(contour, true);
+            const approx = new cv.Mat();
+            cv.approxPolyDP(contour, approx, 0.05 * perimeter, true);
+
+            // We specifically want a 4-point polygon (a piece of paper)
+            if (approx.rows === 4 && area > maxArea) {
+              maxArea = area;
+              maxContourIndex = i;
+              
+              if (bestApprox) bestApprox.delete(); // Free old approx
+              bestApprox = approx.clone();
+            }
+            approx.delete();
+          }
+          contour.delete();
+        }
+
+        if (maxContourIndex !== -1 && bestApprox) {
+          // 6. Push verified mathematical polygon coordinates into React State
+          const foundCorners = [];
+          for (let i = 0; i < 4; i++) {
+             // access the flattened array struct inside data32S vector
+             foundCorners.push({
+               x: bestApprox.data32S[i * 2],
+               y: bestApprox.data32S[i * 2 + 1]
+             });
+          }
+          setCorners(foundCorners);
+          bestApprox.delete();
+          
+        } else {
+          // 7. Auto-Detect Fallback: Build 80% array natively and map to state directly
+          const width = canvas.width;
+          const height = canvas.height;
+          const padX = Math.floor(width * 0.1);
+          const padY = Math.floor(height * 0.1);
+
+          setCorners([
+            { x: padX, y: padY },
+            { x: width - padX, y: padY },
+            { x: width - padX, y: height - padY },
+            { x: padX, y: height - padY }
+          ]);
+          
+          console.warn("Could not auto-detect document edge contours. Falling back to default 80% bounding box.");
+        }
+
+      } catch (e: any) {
+        console.error("OpenCV Processing Error:", e);
+        setError("An error occurred running the edge-detection algorithm.");
+      } finally {
+        // ALWAYS delete OpenCV variables to prevent massive memory leaks
+        if (src) src.delete();
+        if (dst) dst.delete();
+        if (gray) gray.delete();
+        if (blurred) blurred.delete();
+        if (edges) edges.delete();
+        if (contours) contours.delete();
+        if (hierarchy) hierarchy.delete();
+        
+        setIsProcessing(false);
+      }
+    }, 50);
+  };
+
+  const flattenDocument = useCallback(() => {
+    if (!corners || corners.length !== 4 || !canvasRef.current || !originalMatRef.current || !isCvLoaded) return;
+    setIsProcessing(true);
+    setError(null);
+
+    // Give React time to show loading state
+    setTimeout(() => {
+      let src: any, dst: any, srcTri: any, dstTri: any, M: any;
+      try {
+        const cv = (window as any).cv;
+        const canvas = canvasRef.current;
+        if (!canvas || !cv) throw new Error("Canvas or OpenCV missing");
+
+        // 1. ALWAYS start from a fresh clone of the pristine original matrix
+        src = originalMatRef.current.clone();
+        dst = new cv.Mat();
+
+        // 2. Lock in the initial CSS display size on the first run!
+        if (initialDisplaySize.current.width === 0) {
+          const rect = canvas.getBoundingClientRect();
+          initialDisplaySize.current = { width: rect.width, height: rect.height };
+        }
+
+        const cssWidth = initialDisplaySize.current.width;
+        const cssHeight = initialDisplaySize.current.height;
+      
+        const intrinsicWidth = src.cols;
+        const intrinsicHeight = src.rows;
+
+        const scaleX = intrinsicWidth / cssWidth;
+        const scaleY = intrinsicHeight / cssHeight;
+
+        const scaledCorners = corners.map(c => ({
+          x: c.x * scaleX,
+          y: c.y * scaleY
+        }));
+
+        // 3. Sort scaled points: TL, TR, BR, BL
+        const sortedX = [...scaledCorners].sort((a, b) => a.x - b.x);
+        const leftPts = sortedX.slice(0, 2).sort((a, b) => a.y - b.y);
+        const rightPts = sortedX.slice(2, 4).sort((a, b) => a.y - b.y);
+        const tl = leftPts[0], bl = leftPts[1], tr = rightPts[0], br = rightPts[1];
+
+        // 4. Calculate exact output dimensions
+        const maxWidth = Math.floor(Math.max(Math.hypot(br.x - bl.x, br.y - bl.y), Math.hypot(tr.x - tl.x, tr.y - tl.y)));
+        const maxHeight = Math.floor(Math.max(Math.hypot(tr.x - br.x, tr.y - br.y), Math.hypot(tl.x - bl.x, tl.y - bl.y)));
+
+        if (maxWidth === 0 || maxHeight === 0) {
+          if (src) src.delete();
+          if (dst) dst.delete();
+          setIsProcessing(false);
+          return;
+        }
+
+        srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
+        dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, maxWidth, 0, maxWidth, maxHeight, 0, maxHeight]);
+
+        // 5. Warp Perspective
+        M = cv.getPerspectiveTransform(srcTri, dstTri);
+        const dsize = new cv.Size(maxWidth, maxHeight);
+        cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+
+        // 6. Safely Apply B&W (Replacing Alpha Channel)
+        if (filterMode === 'bw') {
+           cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY, 0);
+           cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 21, 15);
+           cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA, 0); // THIS PREVENTS THE BLACK SCREEN
+        }
+
+        // 7. Render to Canvas
+        cv.imshow(canvas, dst);
+        setIsFlattened(true);
+
+      } catch (e: any) {
+        console.error("Flatten Error:", e);
+        setError("Failed to flatten the document.");
+      } finally {
+        // 8. Memory Cleanup
+        if (src) src.delete(); 
+        if (dst) dst.delete(); 
+        if (M) M.delete(); 
+        if (srcTri) srcTri.delete(); 
+        if (dstTri) dstTri.delete();
+        setIsProcessing(false);
+      }
+    }, 50);
+  }, [corners, isCvLoaded, filterMode]);
+
+  // Re-run flatten if filter toggled while already flattened
+  useEffect(() => {
+     if (isFlattened) flattenDocument();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterMode, isFlattened]);
+
+  const downloadPDF = async () => {
+    if (!canvasRef.current || !isFlattened) return;
     setIsProcessing(true);
     setError(null);
     try {
+      const dataUrl = canvasRef.current.toDataURL("image/jpeg", 0.9);
       const pdfDoc = await PDFDocument.create();
       
-      const allPages = [...scannedPages, capturedImage];
-      
-      for (const pageImage of allPages) {
-        // Get image bytes from data URL
-        const base64Data = pageImage.split(',')[1];
-        const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-        
-        const image = await pdfDoc.embedJpg(imageBytes);
-        const { width, height } = image.scale(1);
-        
-        const page = pdfDoc.addPage([width, height]);
-        page.drawImage(image, {
-          x: 0,
-          y: 0,
-          width,
-          height,
-        });
-      }
-      
+      const res = await fetch(dataUrl);
+      const imgBytes = await res.arrayBuffer();
+      const image = await pdfDoc.embedJpg(imgBytes);
+
+      const page = pdfDoc.addPage([image.width, image.height]);
+      page.drawImage(image, {
+        x: 0,
+        y: 0,
+        width: image.width,
+        height: image.height,
+      });
+
       const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+      const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `smart-scan-${Date.now()}.pdf`;
+      a.download = "Scanned_Document.pdf";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("PDF generation error:", err);
-      setError("Failed to create PDF document.");
+    } catch (e) {
+      console.error("PDF Export Error: ", e);
+      setError("Failed to generate PDF.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleRetake = () => {
-    setScannedPages([]);
-    setCapturedImage(null);
-    setRawCroppedImage(null);
-    setOriginalImage(null);
-    setImageDimensions(null);
-    setStep('camera');
-    setFilterMode('color');
-    setError(null);
-    if (scanMode === 'camera') {
-      startCamera();
-    } else {
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleScanNextPage = () => {
-    // Extract canvas image using toDataURL if available, fallback to capturedImage
-    if (canvasRef.current) {
-      setScannedPages(prev => [...prev, canvasRef.current!.toDataURL('image/jpeg', 0.9)]);
-    } else if (capturedImage) {
-      setScannedPages(prev => [...prev, capturedImage]);
-    }
-    setCapturedImage(null);
-    setRawCroppedImage(null);
-    setOriginalImage(null);
-    setImageDimensions(null);
-    setStep('camera');
-    setFilterMode('color');
-    setError(null);
-    if (scanMode === 'camera') {
-      startCamera();
-    } else {
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === targetIndex) return;
-    
-    const newPages = [...scannedPages];
-    const [draggedItem] = newPages.splice(draggedIndex, 1);
-    newPages.splice(targetIndex, 0, draggedItem);
-    
-    setScannedPages(newPages);
-    setDraggedIndex(null);
-  };
-
-  const removePage = (index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newPages = [...scannedPages];
-    newPages.splice(index, 1);
-    setScannedPages(newPages);
-  };
-
-  const applyFilter = useCallback(() => {
-    if (!rawCroppedImage || !canvasRef.current) return;
-    
-    if (filterMode === 'color') {
-      setCapturedImage(rawCroppedImage);
-      return;
-    }
-    
-    if (filterMode === 'bw' && !isOpenCvLoaded) {
-      setError("Document processor is still loading, please wait.");
-      return;
-    }
-    
-    setIsProcessing(true);
-    
-    try {
-      // @ts-ignore
-      const cv = window.cv;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      const img = new window.Image();
-      img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        let src = cv.imread(canvas);
-        let dst = new cv.Mat();
-        
-        cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY, 0);
-        
-        // Xerox filter (Adaptive Thresholding)
-        // src, dst, maxValue, adaptiveMethod, thresholdType, blockSize, C
-        cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 21, 10);
-        
-        cv.imshow(canvas, dst);
-        setCapturedImage(canvas.toDataURL('image/jpeg', 0.9));
-        
-        src.delete(); dst.delete();
-        setIsProcessing(false);
-      };
-      img.src = rawCroppedImage;
-    } catch (err: any) {
-      console.error(err);
-      setError("Failed to apply document filter.");
-      setIsProcessing(false);
-    }
-  }, [rawCroppedImage, filterMode, isOpenCvLoaded]);
-
-  useEffect(() => {
-    applyFilter();
-  }, [applyFilter]);
-
   return (
-    <main className="min-h-screen bg-[#0A0A0B] text-white p-4 md:p-8">
-      <Script 
-        id="opencv-script"
-        src="https://docs.opencv.org/4.8.0/opencv.js" 
-        strategy="lazyOnload"
-        onReady={() => {
-            // @ts-ignore
-            if (window.cv) {
-                setIsOpenCvLoaded(true);
-            }
-        }}
-      />
-      <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-white transition-colors mb-4">
-          <ArrowLeft className="w-4 h-4" /> Back to Tools
+    <div className="min-h-screen flex flex-col pt-6 pb-24 md:pb-12 bg-[#0A0A0B] text-white selection:bg-indigo-500/30">
+      <header className="px-6 md:px-12 flex items-center justify-between mb-8 max-w-7xl mx-auto w-full">
+        <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm font-medium">Back to Tools</span>
         </Link>
+      </header>
 
-        {/* SEO Headers */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400 mb-4">
-            Free Online Document Scanner (Use Your Device Camera)
-          </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
-            Instantly scan documents, receipts, and notes using your laptop or phone camera. Completely free, no downloads, and processed 100% locally on your device for maximum privacy.
+      <main className="flex-1 max-w-7xl mx-auto w-full px-6 flex flex-col items-center">
+        <div className="mb-10 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="w-8 h-8 text-indigo-500" />
+          </div>
+          <h1 className="text-4xl font-black mb-4 tracking-tight">Perspective Scanner</h1>
+          <p className="text-gray-400 text-lg max-w-xl mx-auto">
+            Mathematically flatten documents using manual OpenCV perspective transformations natively inside your browser.
           </p>
         </div>
-        
-        <div className="bg-[#121214] border border-white/5 rounded-3xl p-4 md:p-6 mb-6 shadow-2xl">
-          <div className="flex flex-col items-center">
-            
-            {/* Mode selection tabs */}
-            {!capturedImage && (
-              <div className="flex bg-black/50 p-1.5 rounded-xl border border-white/10 mb-8 w-full max-w-md">
-                <button
-                  onClick={() => handleModeSwitch('camera')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-                    scanMode === 'camera' 
-                      ? 'bg-indigo-600 shadow-md text-white' 
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Camera className="w-4 h-4" />
-                  Use Camera
-                </button>
-                <button
-                  onClick={() => handleModeSwitch('upload')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-                    scanMode === 'upload' 
-                      ? 'bg-indigo-600 shadow-md text-white' 
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload Image
-                </button>
-              </div>
-            )}
 
-            {error && (
-              <div className="w-full mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl flex items-start gap-3 text-sm">
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                <p>{error}</p>
-              </div>
-            )}
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3 text-red-400 text-sm w-full max-w-4xl">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <p>{error}</p>
+          </div>
+        )}
 
-            {previewIndex !== null ? (
-              <div className="w-full flex flex-col items-center gap-6">
-                <div className="relative w-full max-w-2xl bg-[#0A0A0B] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex justify-center">
-                  <img src={scannedPages[previewIndex]} className="w-full max-h-[60vh] object-contain rounded-md" alt={`Preview Page ${previewIndex + 1}`} />
+        <div className="w-full flex flex-col lg:flex-row gap-8 items-start mb-16">
+          {/* Left Column - 1/3 Upload and Controls */}
+          <div className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0 relative">
+             
+             {!isCvLoaded && (
+                <div className="absolute inset-0 z-50 bg-[#0A0A0B]/80 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center border border-indigo-500/20">
+                     <svg className="animate-spin mb-4 h-10 w-10 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                     </svg>
+                     <h3 className="font-bold text-white tracking-widest text-sm uppercase">Loading Vision Engine</h3>
+                     <p className="text-xs text-gray-400 mt-2">Initializing OpenCV.js WebAssembly...</p>
                 </div>
-                <button 
-                  onClick={() => setPreviewIndex(null)}
-                  className="px-6 py-3.5 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-all"
+             )}
+
+            {!file && !isCameraMode ? (
+              <div className="flex flex-col gap-4 w-full">
+                <label 
+                  className={`
+                    relative flex flex-col items-center justify-center p-12
+                    border-2 border-dashed rounded-2xl transition-all duration-200 cursor-pointer
+                    ${isDragging 
+                      ? 'border-indigo-500 bg-indigo-500/5' 
+                      : 'border-white/10 bg-[#121214] hover:border-indigo-500/50 hover:bg-[#18181A]'
+                    }
+                  `}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
                 >
-                  Close Preview
-                </button>
-              </div>
-            ) : (
-              <>
-            {/* Step 1: Camera or Upload Selection */}
-            {step === 'camera' && (
-              <div className="w-full flex flex-col items-center gap-6">
-                
-                {/* Permanent Video Element for live feed */}
-                <div className={isCameraActive ? "relative w-full flex justify-center block overflow-hidden rounded-lg bg-black" : "hidden"}>
-                  <video 
-                    ref={videoRef}
-                    playsInline 
-                    muted
-                    onLoadedMetadata={() => videoRef.current?.play().catch(e => console.error(e))}
-                    className="block w-full max-h-[60vh] object-contain"
+                  <input 
+                    type="file" 
+                    accept="image/jpeg, image/png, image/webp"
+                    onChange={handleFileInput}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    disabled={!isCvLoaded}
                   />
+                  <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6 text-indigo-500">
+                    <UploadCloud className="w-8 h-8" />
+                  </div>
+                  <p className="font-medium text-lg mb-2 text-center text-white">Upload a Photo</p>
+                  <p className="text-sm text-gray-500 text-center">Drag & drop or click</p>
+                </label>
+
+                <div className="flex gap-4 w-full">
+                   <button onClick={() => startCamera("user")} disabled={!isCvLoaded || isProcessing} className="flex-1 py-4 text-sm font-semibold rounded-2xl bg-[#121214] hover:bg-[#18181A] transition flex items-center justify-center gap-2 border border-white/5 disabled:opacity-50">
+                     📷 Laptop Camera
+                   </button>
+                   <button onClick={() => startCamera("environment")} disabled={!isCvLoaded || isProcessing} className="flex-1 py-4 text-sm font-semibold rounded-2xl bg-[#121214] hover:bg-[#18181A] transition flex items-center justify-center gap-2 border border-white/5 disabled:opacity-50">
+                     📱 Mobile Camera
+                   </button>
+                </div>
+              </div>
+            ) : file && !isCameraMode ? (
+              <div className="flex flex-col gap-6 w-full">
+                {/* File Info */}
+                <div className="p-4 rounded-xl bg-[#121214] border border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                      <FileText className="w-6 h-6 text-indigo-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-white truncate text-sm" title={file.name}>
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={removeFile}
+                    className="p-2 shrink-0 ml-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
+                    title="Remove file"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Placeholder for Computer Vision Controls */}
+                <div className="p-6 rounded-2xl bg-[#121214] border border-white/5 flex flex-col gap-6">
                   
-                  {/* Aiming guide overlay */}
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                    <div 
-                      ref={guideBoxRef}
-                      className="w-4/5 max-h-[90%] aspect-[8.5/11] border-4 border-white border-dashed rounded-sm shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]"
-                    />
-                  </div>
-                </div>
-
-                {scanMode === 'camera' && !isCameraActive && !error && (
-                  <div className="w-full aspect-[3/4] md:aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center text-center p-6 flex-col">
-                    <div className="w-16 h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4">
-                      <Camera className="w-8 h-8 text-indigo-400" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">Camera Ready</h3>
-                    <p className="text-gray-400 max-w-sm mb-6">
-                      Start your camera to scan a document securely on your device.
-                    </p>
-                    <button 
-                      onClick={startCamera}
-                      className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-indigo-900/20"
-                    >
-                      Start Camera Feed
-                    </button>
-                  </div>
-                )}
-                
-                {scanMode === 'upload' && (
-                  <div 
-                    onClick={triggerFileUpload}
-                    className="w-full border-2 border-dashed border-indigo-500/30 rounded-2xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-indigo-500/5 transition-all group min-h-[400px]"
-                  >
-                    <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                      <ImageIcon className="w-10 h-10 text-indigo-400" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">Upload Document</h3>
-                    <p className="text-gray-400 max-w-sm mb-6">
-                      Select an image of a document to scan and convert to a standard format.
-                    </p>
-                    <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors">
-                      Select File
-                    </button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                      accept="image/*"
-                      className="hidden"
-                    />
-                  </div>
-                )}
-
-                {scanMode === 'camera' && isCameraActive && (
-                  <button 
-                    onClick={captureDocument}
-                    className="flex items-center gap-2 px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-full transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-900/40 border border-indigo-400/20"
-                  >
-                    <Camera className="w-5 h-5" />
-                    Capture Document
-                  </button>
-                )}
-
-                {/* How it Works Section for SEO/UX */}
-                {scanMode === 'camera' && (
-                  <div className="w-full mt-4 bg-black/30 border border-white/5 rounded-2xl p-6 text-left">
-                    <h2 className="text-xl font-bold mb-4 text-white">How it Works</h2>
-                    <ul className="text-gray-400 space-y-3">
-                      <li className="flex items-center gap-3">
-                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-bold shrink-0">1</span>
-                        <span>Allow camera access.</span>
-                      </li>
-                      <li className="flex items-center gap-3">
-                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-bold shrink-0">2</span>
-                        <span>Hold your document up to the screen.</span>
-                      </li>
-                      <li className="flex items-center gap-3">
-                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-bold shrink-0">3</span>
-                        <span>Capture and save as a PDF or image.</span>
-                      </li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 2: Result and Download */}
-            {step === 'result' && capturedImage && (
-              <div className="w-full flex flex-col items-center gap-6">
-                
-                {/* Filter Toggle */}
-                <div className="flex bg-black/50 p-1.5 rounded-xl border border-white/10 w-full max-w-sm">
                   <button
-                    onClick={() => setFilterMode('color')}
-                    disabled={isProcessing}
-                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-                      filterMode === 'color' 
-                        ? 'bg-indigo-600 shadow-md text-white' 
-                        : 'text-gray-400 hover:text-white hover:bg-white/5'
-                    } disabled:opacity-50`}
+                    onClick={autoDetectDocument}
+                    disabled={isProcessing || !isCvLoaded || isFlattened}
+                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-900/20 transition-all flex items-center justify-center gap-2 group border border-indigo-400/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Original Color
+                    {isProcessing ? (
+                       <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                       </svg>
+                    ) : (
+                       <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                    )}
+                    {isProcessing ? "Analyzing..." : "Set Crop Area"}
                   </button>
+
                   <button
-                    onClick={() => setFilterMode('bw')}
-                    disabled={isProcessing || !isOpenCvLoaded}
-                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-                      filterMode === 'bw' 
-                        ? 'bg-indigo-600 shadow-md text-white' 
-                        : 'text-gray-400 hover:text-white hover:bg-white/5'
-                    } disabled:opacity-50`}
+                    onClick={flattenDocument}
+                    disabled={isProcessing || !isCvLoaded || !corners || corners.length !== 4 || isFlattened}
+                    className={`w-full py-4 font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 group active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isFlattened 
+                        ? "bg-gray-800 text-gray-500 border border-gray-700" 
+                        : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 border border-emerald-400/20"
+                    }`}
                   >
-                    B&W Scan
+                    <Layers className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                    {isFlattened ? "Document Flattened" : "Flatten Document"}
                   </button>
-                </div>
 
-                {scannedPages.length > 0 && (
-                  <div className="flex gap-4 overflow-x-auto w-full max-w-2xl py-2 px-1 scrollbar-thin scrollbar-thumb-white/10">
-                    {scannedPages.map((pageImage, index) => (
-                      <div
-                        key={index}
-                        draggable={true}
-                        onDragStart={() => setDraggedIndex(index)}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => handleDrop(e, index)}
-                        onClick={() => setPreviewIndex(index)}
-                        className="relative w-20 h-28 shrink-0 rounded-lg overflow-hidden border-2 border-white/20 cursor-move cursor-pointer group opacity-70 hover:opacity-100 hover:border-indigo-500 transition-all bg-black/50"
-                      >
-                        <img src={pageImage} alt={`Page ${index + 1}`} className="w-full h-full object-contain pointer-events-none" />
-                        <button
-                          onClick={(e) => { e.stopPropagation(); removePage(index, e); }}
-                          className="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-white font-bold">
-                          {index + 1}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="text-sm text-gray-400 font-medium pb-2">
-                  Page {scannedPages.length + 1} of {scannedPages.length + 1}
-                </div>
-
-                <div className="relative w-full max-w-2xl bg-[#0A0A0B] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={capturedImage} 
-                    alt="Captured document" 
-                    className={`w-full h-auto max-h-[50vh] object-contain transition-opacity duration-300 ${isProcessing ? 'opacity-50' : 'opacity-100'}`}
-                  />
-                  {isProcessing && (
-                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-                     </div>
-                  )}
-                </div>
-                
-                <div className="flex flex-wrap items-center justify-center gap-4 w-full">
-                  <button 
-                    onClick={handleRetake}
-                    className="flex items-center gap-2 px-6 py-3.5 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-medium rounded-xl transition-all"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Clear All & Restart
-                  </button>
-                  <button 
-                    onClick={handleScanNextPage}
-                    className="flex items-center gap-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition-all shadow-lg shadow-indigo-900/30"
-                  >
-                    <Camera className="w-4 h-4" />
-                    Scan Next Page
-                  </button>
-                  <button 
-                    onClick={downloadImage}
-                    className="flex items-center gap-2 px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-900/30"
+                  <button
+                    onClick={downloadPDF}
+                    disabled={isProcessing || !isFlattened}
+                    className="w-full py-4 bg-white hover:bg-gray-100 text-black font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 group active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Download className="w-5 h-5" />
-                    Download Image
-                  </button>
-                  <button 
-                    onClick={downloadPdf}
-                    disabled={isProcessing}
-                    className="flex items-center gap-2 px-8 py-3.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-rose-900/30 disabled:opacity-50"
-                  >
-                    <FileText className="w-5 h-5" />
                     Download PDF
                   </button>
+
+                  <div className="flex flex-col items-center justify-center py-4 opacity-50 border-t border-white/5 pt-6 mt-2">
+                       <p className="text-sm text-gray-400 font-medium tracking-tight">Scanner Pipeline</p>
+                       <p className="text-xs text-gray-600 mt-1 text-center">Capture ➔ Crop ➔ Flatten ➔ Export</p>
+                  </div>
                 </div>
               </div>
-            )}
-              </>
-            )}
-            
-            {/* Hidden canvas for processing image data */}
-            <canvas ref={canvasRef} className="hidden" />
+            ) : null}
+          </div>
+
+          {/* Right Column - 2/3 Canvas Display Container */}
+          <div className="w-full lg:w-2/3 flex flex-col fade-in bg-[#121214] border border-white/5 rounded-2xl min-h-[500px] lg:min-h-[700px] overflow-hidden relative">
+             
+             {isCameraMode ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-8 bg-[#0F0F11] z-30">
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full max-h-[60vh] object-contain mb-6 rounded-xl border border-white/10 bg-black shadow-2xl" />
+                  <div className="flex gap-4 w-full max-w-sm">
+                     <button onClick={stopCamera} className="w-1/3 py-4 bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold rounded-xl transition-all border border-red-500/30">
+                       Cancel
+                     </button>
+                     <button onClick={capturePhoto} className="w-2/3 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-[0_0_30px_-5px_rgba(99,102,241,0.5)] transition-all border border-indigo-400/20 text-lg">
+                       📸 Snap Document
+                     </button>
+                  </div>
+                </div>
+             ) : (
+                <>
+                   {/* Dynamic Filter Toggle Overlay */}
+                   {isFlattened && (
+                      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex p-1 bg-[#1A1A1D] border border-white/10 rounded-lg shadow-xl backdrop-blur-md">
+                         <button 
+                           onClick={() => setFilterMode('color')}
+                           className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterMode === 'color' ? 'bg-[#2A2A2E] text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                         >
+                           Original Color
+                         </button>
+                         <button 
+                           onClick={() => setFilterMode('bw')}
+                           className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterMode === 'bw' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                         >
+                           B&W Scan
+                         </button>
+                      </div>
+                   )}
+
+                   {/* The container gives the canvas a bounding box to scale proportionally */}
+                   <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8 md:pt-16 bg-[#0F0F11]">
+                       {!file && !isCameraMode && (
+                           <div className="flex flex-col items-center justify-center text-gray-600 opacity-60">
+                               <div className="w-24 h-24 border border-dashed border-gray-600 rounded-lg mb-4"></div>
+                               <p className="font-medium tracking-wide text-sm">Waiting for document...</p>
+                           </div>
+                       )}
+                       <canvas 
+                          ref={canvasRef} 
+                          className={`shadow-2xl ring-1 ring-white/10 transition-opacity duration-300 touch-none ${!file ? 'opacity-0' : 'opacity-100'} ${corners && !isFlattened ? 'cursor-crosshair' : ''}`}
+                          onPointerDown={onPointerDown}
+                          onPointerMove={onPointerMove}
+                          onPointerUp={onPointerUp}
+                          onPointerCancel={onPointerUp}
+                       />
+                   </div>
+                </>
+             )}
           </div>
         </div>
-
-        <div className="mt-8">
-          <ToolInstructions steps={[
-            "Choose Camera or Upload mode",
-            "Align your document or select an image",
-            "Capture and download the scan directly"
-          ]} />
-        </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

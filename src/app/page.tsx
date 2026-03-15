@@ -71,11 +71,45 @@ export default function Home() {
 
         {/* Feature Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full mb-32">
-          {tools.map((tool) => (
+          
+          {/* Highlighted Smart Scanner Card */}
+          <Link
+            href="/tools/smart-scanner"
+            className="md:col-span-2 lg:col-span-3 flex flex-col gap-6 p-8 bg-gradient-to-br from-indigo-500/10 to-purple-600/10 border border-indigo-500/30 rounded-2xl hover:border-indigo-500/60 hover:bg-indigo-500/10 transition-all duration-300 relative overflow-hidden group shadow-lg shadow-indigo-500/5"
+          >
+            <div className="absolute top-0 right-0 p-4 opacity-[0.03] transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition-transform duration-500 pointer-events-none">
+              <Sparkles className="w-64 h-64" />
+            </div>
+            
+            <div className="relative z-10 flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">📄</div>
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent tracking-tight">Perspective Scanner</h3>
+              </div>
+              
+              <p className="text-gray-200 leading-relaxed text-base md:text-lg mb-6">
+                Transform physical documents into perfect digital PDFs instantly. Upload an existing photo or use your laptop/mobile camera to capture documents live. Use our manual precision crop tool to mathematically flatten crooked pages directly on your machine for maximum privacy.
+              </p>
+              
+              <div className="flex flex-col md:flex-row gap-4">
+                 <div className="flex-1 bg-black/40 p-5 rounded-xl border border-white/5 shadow-inner">
+                    <strong className="text-indigo-400 block mb-2 text-xs uppercase tracking-widest font-bold">Live Capture & Upload</strong>
+                    <span className="text-sm text-gray-400 leading-relaxed">Instantly snap photos using your built-in camera or drag-and-drop existing images into our secure, offline pipeline.</span>
+                 </div>
+                 <div className="flex-[2] bg-black/40 p-5 rounded-xl border border-white/5 shadow-inner">
+                    <strong className="text-purple-400 block mb-2 text-xs uppercase tracking-widest font-bold">Precision Warp</strong>
+                    <span className="text-sm text-gray-400 leading-relaxed">Manually trace the four corners of your document to mathematically flatten crooked pages and apply professional high-contrast B&W filters.</span>
+                 </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Standard Tool Grid */}
+          {tools.filter(t => t.id !== 'smart-scanner').map((tool) => (
             <Link
               key={tool.id}
               href={tool.href}
-              className="flex flex-col p-6 bg-[#121214] border border-white/5 rounded-2xl hover:border-indigo-500 hover:bg-[#18181A] transition-all duration-200"
+              className="flex flex-col p-6 bg-[#121214] border border-white/5 rounded-2xl hover:border-indigo-500 hover:bg-[#18181A] transition-all duration-200 group"
             >
               <div className="text-2xl mb-4 w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">{tool.icon}</div>
               <h3 className="text-lg font-bold text-white mb-1 tracking-tight">{tool.name}</h3>

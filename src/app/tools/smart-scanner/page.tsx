@@ -271,16 +271,6 @@ export default function SmartScannerPage() {
     // 4. Flush the CSS scale lock so the new image calculates its own size
     initialDisplaySize.current = { width: 0, height: 0 };
 
-    // 5. Calculate default fallback corners based on the intrinsic video size
-    const padX = w * 0.1;
-    const padY = h * 0.1;
-    setCorners([
-      { x: padX, y: padY },
-      { x: w - padX, y: padY },
-      { x: w - padX, y: h - padY },
-      { x: padX, y: h - padY }
-    ]);
-
     // Create a dummy file so UI proceeds to edit mode gracefully
     tmpCanvas.toBlob((blob) => {
       if (blob) {
@@ -290,15 +280,32 @@ export default function SmartScannerPage() {
       }
     }, 'image/jpeg', 0.95);
 
-    // 6. Turn off the webcam, which will cause React to remount the main <canvas>
+    // 4. Turn off camera (Triggers React to render the standard display <canvas>)
     stopCamera();
 
-    // 7. Wait 100ms for React to finish putting the <canvas> back on the screen, then render!
+    // 5. CRITICAL FIX: Wait for DOM, then calculate corners using CSS Display Pixels
     setTimeout(() => {
+      if (!canvasRef.current) return;
+      
+      const rect = canvasRef.current.getBoundingClientRect();
+      const cssWidth = rect.width;
+      const cssHeight = rect.height;
+
+      // Create a crop box with 10% padding relative to the physical screen
+      const padX = cssWidth * 0.1;
+      const padY = cssHeight * 0.1;
+
+      setCorners([
+        { x: padX, y: padY },
+        { x: cssWidth - padX, y: padY },
+        { x: cssWidth - padX, y: cssHeight - padY },
+        { x: padX, y: cssHeight - padY }
+      ]);
+      
       if (typeof flattenDocument === 'function') {
         flattenDocument();
       }
-    }, 100);
+    }, 150); // 150ms buffer for React to mount the canvas
   };
 
   // Pointer Tracking Logic for Canvas Interaction

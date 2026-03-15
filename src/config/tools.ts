@@ -11,6 +11,14 @@ export interface ToolConfig {
 
 export const tools: ToolConfig[] = [
   {
+    id: 'merge-pdf',
+    name: 'Merge PDF',
+    description: 'Combine multiple PDF files into a single document.',
+    href: '/merge-pdf',
+    category: 'Documents',
+    icon: '📑'
+  },
+  {
     id: 'remove-background',
     name: 'AI Background Remover',
     description: 'Local AI subject isolation and background removal.',

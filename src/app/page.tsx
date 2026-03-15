@@ -23,16 +23,19 @@ export default function Home() {
           <div className="flex items-center gap-8">
             <div className="relative group inline-block z-[999]">
               <button className="text-sm font-medium text-gray-300 hover:text-white transition-colors py-2">Tools ▾</button>
-              <div className="absolute left-0 mt-2 w-56 bg-gray-900 border border-gray-700 rounded-md shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 flex flex-col overflow-hidden">
-                {tools.map((tool) => (
-                  <Link 
-                    key={tool.id} 
-                    href={tool.href} 
-                    className="px-4 py-3 text-sm text-gray-300 hover:bg-gray-800 hover:text-white flex items-center gap-2"
-                  >
-                    <span>{tool.icon}</span> {tool.name}
-                  </Link>
-                ))}
+              <div className="absolute left-0 mt-2 w-[300px] md:w-[600px] bg-[#121214] border border-gray-800 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="p-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {tools.map((tool) => (
+                    <Link 
+                      key={tool.id} 
+                      href={tool.href} 
+                      className="px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-indigo-500/10 hover:text-indigo-300 flex items-center gap-2.5 transition-colors border border-transparent hover:border-indigo-500/20"
+                    >
+                      <span className="text-indigo-400">{tool.icon}</span> 
+                      <span className="truncate">{tool.name}</span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
             <Link href="/privacy" className="text-sm font-medium text-gray-300 hover:text-white transition-colors py-2">Privacy</Link>
@@ -75,32 +78,21 @@ export default function Home() {
           {/* Highlighted Smart Scanner Card */}
           <Link
             href="/tools/smart-scanner"
-            className="md:col-span-2 lg:col-span-3 flex flex-col gap-6 p-8 bg-gradient-to-br from-indigo-500/10 to-purple-600/10 border border-indigo-500/30 rounded-2xl hover:border-indigo-500/60 hover:bg-indigo-500/10 transition-all duration-300 relative overflow-hidden group shadow-lg shadow-indigo-500/5"
+            className="flex flex-col gap-4 p-6 bg-[#121214] border border-indigo-500/30 rounded-2xl hover:border-indigo-500/60 transition-all duration-300 relative overflow-hidden group shadow-[0_0_15px_rgba(99,102,241,0.1)]"
           >
             <div className="absolute top-0 right-0 p-4 opacity-[0.03] transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition-transform duration-500 pointer-events-none">
               <Sparkles className="w-64 h-64" />
             </div>
             
-            <div className="relative z-10 flex flex-col">
+            <div className="relative z-10 flex flex-col h-full">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">📄</div>
-                <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent tracking-tight">Perspective Scanner</h3>
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform text-indigo-400">📄</div>
+                <h3 className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent tracking-tight">Perspective Scanner</h3>
               </div>
               
-              <p className="text-gray-200 leading-relaxed text-base md:text-lg mb-6">
-                Transform physical documents into perfect digital PDFs instantly. Upload an existing photo or use your laptop/mobile camera to capture documents live. Use our manual precision crop tool to mathematically flatten crooked pages directly on your machine for maximum privacy.
+              <p className="text-sm text-gray-500 leading-relaxed mb-4 flex-grow">
+                Transform physical documents into perfect digital PDFs natively in your browser. Live capture or upload images, and manually mathematically flatten crooked pages for maximum privacy.
               </p>
-              
-              <div className="flex flex-col md:flex-row gap-4">
-                 <div className="flex-1 bg-black/40 p-5 rounded-xl border border-white/5 shadow-inner">
-                    <strong className="text-indigo-400 block mb-2 text-xs uppercase tracking-widest font-bold">Live Capture & Upload</strong>
-                    <span className="text-sm text-gray-400 leading-relaxed">Instantly snap photos using your built-in camera or drag-and-drop existing images into our secure, offline pipeline.</span>
-                 </div>
-                 <div className="flex-[2] bg-black/40 p-5 rounded-xl border border-white/5 shadow-inner">
-                    <strong className="text-purple-400 block mb-2 text-xs uppercase tracking-widest font-bold">Precision Warp</strong>
-                    <span className="text-sm text-gray-400 leading-relaxed">Manually trace the four corners of your document to mathematically flatten crooked pages and apply professional high-contrast B&W filters.</span>
-                 </div>
-              </div>
             </div>
           </Link>
 

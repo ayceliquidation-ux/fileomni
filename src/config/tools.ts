@@ -169,5 +169,21 @@ export const tools: ToolConfig[] = [
     href: '/tools/compress-office',
     category: 'Documents',
     icon: '📊'
+  },
+  {
+    id: 'edit-pdf',
+    name: 'Edit PDF',
+    description: 'Add custom text overlays and freehand drawings directly onto PDFs locally.',
+    href: '/tools/edit-pdf',
+    category: 'Documents',
+    icon: '📝'
+  },
+  {
+    id: 'exif-scrubber',
+    name: 'EXIF Scrubber',
+    description: 'View hidden camera metadata and securely obliterate GPS coordinates.',
+    href: '/tools/exif-scrubber',
+    category: 'Media',
+    icon: '📸'
   }
 ];

@@ -624,7 +624,7 @@ export default function SmartScannerPage() {
         </Link>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 flex flex-col items-center">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-6 flex flex-col items-center">
         <div className="mb-10 text-center">
           <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto mb-6">
             <Sparkles className="w-8 h-8 text-indigo-500" />
@@ -642,9 +642,9 @@ export default function SmartScannerPage() {
           </div>
         )}
 
-        <div className="w-full flex flex-col lg:flex-row gap-8 items-start mb-16">
+        <div className="w-full flex flex-col lg:flex-row bg-[#121214] border border-gray-800 rounded-2xl shadow-xl overflow-hidden mb-16">
           {/* Left Column - 1/3 Upload and Controls */}
-          <div className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0 relative">
+          <div className="w-full lg:w-1/3 flex flex-col p-6 border-b lg:border-b-0 lg:border-r border-gray-800 shrink-0 relative">
              
              {!isCvLoaded && (
                 <div className="absolute inset-0 z-50 bg-[#0A0A0B]/80 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center border border-indigo-500/20">
@@ -658,7 +658,7 @@ export default function SmartScannerPage() {
              )}
 
             {!file && !isCameraMode ? (
-              <div className="flex flex-col gap-4 w-full">
+              <div className="flex flex-col gap-4 w-full h-full justify-center">
                 <label 
                   className={`
                     relative flex flex-col items-center justify-center p-12
@@ -696,9 +696,9 @@ export default function SmartScannerPage() {
                 </div>
               </div>
             ) : file && !isCameraMode ? (
-              <div className="flex flex-col gap-6 w-full">
+              <div className="flex flex-col gap-6 w-full h-full justify-center">
                 {/* File Info */}
-                <div className="p-4 rounded-xl bg-[#121214] border border-white/5 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-[#0A0A0B] border border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-4 min-w-0">
                     <div className="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0 border border-indigo-500/20">
                       <FileText className="w-6 h-6 text-indigo-400" />
@@ -722,7 +722,7 @@ export default function SmartScannerPage() {
                 </div>
 
                 {/* Placeholder for Computer Vision Controls */}
-                <div className="p-6 rounded-2xl bg-[#121214] border border-white/5 flex flex-col gap-6">
+                <div className="p-6 rounded-2xl bg-[#0A0A0B] border border-white/5 flex flex-col gap-6">
                   
                   <button
                     onClick={autoDetectDocument}
@@ -772,7 +772,7 @@ export default function SmartScannerPage() {
           </div>
 
           {/* Right Column - 2/3 Canvas Display Container */}
-          <div className="w-full lg:w-2/3 flex flex-col fade-in bg-[#121214] border border-white/5 rounded-2xl min-h-[500px] lg:min-h-[700px] overflow-hidden relative">
+          <div className="w-full lg:w-2/3 flex flex-col fade-in bg-[#0A0A0B] min-h-[500px] lg:min-h-[700px] relative">
              
              {isCameraMode && (
                 <div className="fixed inset-0 z-50 bg-black flex flex-col">

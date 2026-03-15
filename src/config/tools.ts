@@ -35,6 +35,14 @@ export const tools: ToolConfig[] = [
     icon: '🔄'
   },
   {
+    id: 'remove-pages',
+    name: 'Remove Pages',
+    description: 'Visually delete pages from your PDF files.',
+    href: '/remove-pages',
+    category: 'Documents',
+    icon: '🗑️'
+  },
+  {
     id: 'add-watermark',
     name: 'Add Watermark',
     description: 'Stamp custom text onto your PDF pages.',

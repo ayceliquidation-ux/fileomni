@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
       "sharp$": false,
       "onnxruntime-node$": false,
     }
+    
+    // Fix for Next.js 15 Webpack bug with pdfjs-dist dynamic imports
+    // "TypeError: Object.defineProperty called on non-object"
+    config.devtool = 'source-map';
+    
     return config;
   },
 };

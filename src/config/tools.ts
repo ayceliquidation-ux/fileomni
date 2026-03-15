@@ -27,6 +27,14 @@ export const tools: ToolConfig[] = [
     icon: '✂️'
   },
   {
+    id: 'rotate-pdf',
+    name: 'Rotate PDF',
+    description: 'Rotate pages in your PDF document.',
+    href: '/rotate-pdf',
+    category: 'Documents',
+    icon: '🔄'
+  },
+  {
     id: 'remove-background',
     name: 'AI Background Remover',
     description: 'Local AI subject isolation and background removal.',

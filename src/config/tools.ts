@@ -19,6 +19,22 @@ export const tools: ToolConfig[] = [
     icon: '📑'
   },
   {
+    id: 'compress-pdf',
+    name: 'Compress PDF',
+    description: 'Reduce PDF file sizes by rasterizing pages to optimized JPEGs.',
+    href: '/tools/compress-pdf',
+    category: 'Documents',
+    icon: '🗜️'
+  },
+  {
+    id: 'sign-pdf',
+    name: 'Sign PDF',
+    description: 'Draw your signature and stamp it securely onto your PDF.',
+    href: '/tools/sign-pdf',
+    category: 'Documents',
+    icon: '🖋️'
+  },
+  {
     id: 'split-pdf',
     name: 'Split PDF',
     description: 'Extract specific pages from a PDF document.',

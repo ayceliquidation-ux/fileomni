@@ -145,5 +145,21 @@ export const tools: ToolConfig[] = [
     href: '/tools/heic-to-jpg',
     category: 'Media',
     icon: '🍏'
+  },
+  {
+    id: 'ocr-extract',
+    name: 'OCR Extract',
+    description: 'Extract text from any image instantly using local OCR.',
+    href: '/tools/ocr-extract',
+    category: 'AI & Vision',
+    icon: '📝'
+  },
+  {
+    id: 'redact-pdf',
+    name: 'Redact PDF',
+    description: 'Securely black-out, flatten, and permanently erase text from PDFs.',
+    href: '/tools/redact-pdf',
+    category: 'Documents',
+    icon: '⬛'
   }
 ];

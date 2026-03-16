@@ -46,21 +46,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-RDBBHRP57V"
-          strategy="afterInteractive"
-        />
+      </head>
+      <body className={`${inter.variable} font-sans antialiased text-foreground bg-background`}>
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-RDBBHRP57V" strategy="afterInteractive" />
         <Script id="google-analytics" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
-            function gtag(){window.dataLayer.push(arguments);}
+            function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-
             gtag('config', 'G-RDBBHRP57V');
           `}
         </Script>
-      </head>
-      <body className={`${inter.variable} font-sans antialiased text-foreground bg-background`}>
         {children}
       </body>
     </html>

@@ -193,5 +193,13 @@ export const tools: ToolConfig[] = [
     href: '/tools/unlock-pdf',
     category: 'Documents',
     icon: '🔓'
+  },
+  {
+    id: 'organize-pdf',
+    name: 'Organize PDF',
+    description: 'Visually drag and drop thumbnails to reorder your PDF pages.',
+    href: '/tools/organize-pdf',
+    category: 'Documents',
+    icon: '📑'
   }
 ];

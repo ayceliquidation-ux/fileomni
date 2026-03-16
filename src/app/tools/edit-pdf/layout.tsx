@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Edit PDF | FileOmni',
-  description: 'Locally add text overlays and freehand drawings directly onto your PDF documents.',
+  title: 'Private PDF Editor | Add Text & Edit Offline | FileOmni',
+  description: 'Edit PDF documents, add text, and fill forms without uploading your sensitive files to the cloud. Fast, secure, and runs entirely on your machine.',
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {

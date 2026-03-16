@@ -185,5 +185,13 @@ export const tools: ToolConfig[] = [
     href: '/tools/exif-scrubber',
     category: 'Media',
     icon: '📸'
+  },
+  {
+    id: 'unlock-pdf',
+    name: 'Unlock PDF',
+    description: 'Remove password protection from encrypted PDF documents natively.',
+    href: '/tools/unlock-pdf',
+    category: 'Documents',
+    icon: '🔓'
   }
 ];

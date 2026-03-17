@@ -201,5 +201,13 @@ export const tools: ToolConfig[] = [
     href: '/tools/organize-pdf',
     category: 'Documents',
     icon: '📑'
+  },
+  {
+    id: 'flatten-pdf',
+    name: 'Flatten PDF',
+    description: 'Permanently merge interactive form fields into your PDF document.',
+    href: '/tools/flatten-pdf',
+    category: 'Documents',
+    icon: '🔒'
   }
 ];
